@@ -143,17 +143,11 @@
                         break;
 
                     case 'die':
-                        this.activeAnim = anims.idle;
-                        this.motion = 'idle';
-                        this.f = this.activeAnim.startFrame;
-                        this.scene.time.delayedCall(3000, this.changeFrame, [], this);
+                        this.scene.time.delayedCall(delay * 1000, this.changeFrame, [], this);
                         break;
 
                     case 'critical':
-                        this.activeAnim = anims.idle;
-                        this.motion = 'idle';
-                        this.f = this.activeAnim.startFrame;
-                        this.scene.time.delayedCall(3000, this.resetAnimation, [], this);
+                        this.scene.time.delayedCall(delay * 1000, this.changeFrame, [], this);
                         break;
                 }
             } else {
@@ -223,8 +217,14 @@
                 sprite.walk(directions.north);
             } else if (event.code == 'Space') {
                 sprite.die();
+                // this.scene.time.delayedCall(3000, function () {
+                //     sprite.idle();
+                // }, [], this);
             } else if (event.code == 'KeyX') {
                 sprite.critical();
+                // this.scene.time.delayedCall(3000, function () {
+                //     sprite.idle();
+                // }, [], this);
             }
         });
         this.input.keyboard.on('keyup', function(event) {
