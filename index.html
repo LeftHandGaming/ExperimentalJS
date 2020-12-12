@@ -143,11 +143,11 @@
                         break;
 
                     case 'die':
-                        this.scene.time.delayedCall(delay * 1000, this.changeFrame, [], this);
+                        this.scene.time.delayedCall(3000, this.resetAnimation, [], this);
                         break;
 
                     case 'critical':
-                        this.scene.time.delayedCall(delay * 1000, this.changeFrame, [], this);
+                        this.scene.time.delayedCall(3000, this.resetAnimation, [], this);
                         break;
                 }
             } else {
@@ -158,10 +158,13 @@
         },
 
         resetAnimation: function () {
-            this.f = this.activeAnim.startFrame;
+            if (this.activeAnim !== this.anims.walk) {
+                this.activeAnim = this.anims.idle;
+                this.f = this.activeAnim.startFrame;
+                this.motion = 'idle';
 
-            this.frame = this.texture.get(this.direction.offset + this.f);
-
+                this.frame = this.texture.get(this.direction.offset + this.f);
+            }
             this.scene.time.delayedCall(this.activeAnim.speed * 1000, this.changeFrame, [], this);
         },
 
@@ -217,14 +220,8 @@
                 sprite.walk(directions.north);
             } else if (event.code == 'Space') {
                 sprite.die();
-                // this.scene.time.delayedCall(3000, function () {
-                //     sprite.idle();
-                // }, [], this);
             } else if (event.code == 'KeyX') {
                 sprite.critical();
-                // this.scene.time.delayedCall(3000, function () {
-                //     sprite.idle();
-                // }, [], this);
             }
         });
         this.input.keyboard.on('keyup', function(event) {
