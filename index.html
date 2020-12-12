@@ -8,11 +8,11 @@
 
     <script>
     var directions = {
-        west: { offset: 0, x: -2, y: 0, opposite: 'east' },
+        west: { offset: 0, x: -4, y: 0, opposite: 'east' },
         northWest: { offset: 36, x: -2, y: -1, opposite: 'southEast' },
         north: { offset: 72, x: 0, y: -2, opposite: 'south' },
         northEast: { offset: 108, x: 2, y: -1, opposite: 'southWest' },
-        east: { offset: 144, x: 2, y: 0, opposite: 'west' },
+        east: { offset: 144, x: 4, y: 0, opposite: 'west' },
         southEast: { offset: 180, x: 2, y: 1, opposite: 'northWest' },
         south: { offset: 216, x: 0, y: 2, opposite: 'north' },
         southWest: { offset: 252, x: -2, y: 1, opposite: 'northEast' }
@@ -63,7 +63,7 @@
 
     var Zombie = new Phaser.Class({
         Extends: Phaser.GameObjects.Image,
-        initialize: function Zombie (scene, x, y, anims) {
+        initialize: function Zombie (scene, x, y, anims, radius) {
             this.scene = scene;
 
             this.startX = x;
@@ -75,6 +75,8 @@
             this.activeAnim = anims.idle;
             this.f = this.activeAnim.startFrame;
             this.motion = 'idle';
+            this.sprint = false;
+            this.radius = radius;
 
             Phaser.GameObjects.Image.call(this, this.scene, x, y, 'zombie1', this.direction.offset * this.f);
 
@@ -105,6 +107,10 @@
             if (this.activeAnim !== anims.critical) {
                 this.changeState(anims.critical, null, 'critical');
             }
+        },
+
+        setSprint : function (sprint) {
+            this.sprint = sprint;
         },
 
         changeState : function (anim, direction, motion) {
@@ -153,7 +159,7 @@
             } else {
                 this.frame = this.texture.get(this.direction.offset + this.f);
 
-                this.scene.time.delayedCall(delay * 1000, this.changeFrame, [], this);
+                this.scene.time.delayedCall(delay * 1000 / (this.activeAnim === this.anims.walk && this.sprint === true ? 3 : 1), this.changeFrame, [], this);
             }
         },
 
@@ -170,13 +176,76 @@
 
         update: function () {
             if (this.motion === 'walk') {
-                this.x += this.direction.x * this.speed;
+                this.x += this.direction.x * (this.sprint === true ? 2 : 1) * this.speed;
 
                 if (this.direction.y !== 0) {
-                    this.y += this.direction.y * this.speed;
+                    this.y += this.direction.y * (this.sprint === true ? 2 : 1) * this.speed;
                     this.depth = this.y + 32;
                 }
             }
+        }
+    });
+
+    var Enemy = new Phaser.Class({
+        Extends: Phaser.GameObjects.Image,
+        initialize: function Enemy (scene, x, y, radius) {
+            this.scene = scene;
+            this.startX = x;
+            this.startY = y;
+            this.radius = radius;
+            this.scale = 0.75;
+
+            Phaser.GameObjects.Image.call(this, this.scene, x, y, 'enemy');
+
+            this.setOrigin(0.5, 1);
+
+            this.depth = y + 71;
+
+            this.scene.time.delayedCall(100, this.changeFrame, [], this);
+
+            this.spin = 10;
+        },
+
+        changeFrame : function () {
+            if (this.angle >= 45)
+                this.spin = -10;
+            else if (this.angle <= -45)
+                this.spin = 10;
+            this.angle += this.spin;
+
+            this.scene.time.delayedCall(100, this.changeFrame, [], this);
+        },
+
+        update: function () {
+            this.x += Math.random() * 40 - 20;
+            this.y += Math.random() * 20 - 10;
+            this.depth = this.y + 71;
+        }
+    });
+
+    var FlagOfTheMotherland = new Phaser.Class({
+        Extends: Phaser.GameObjects.Image,
+        initialize: function FlagOfTheMotherland (scene, x, y, radius) {
+            this.scene = scene;
+            this.startX = x;
+            this.startY = y;
+            this.radius = radius;
+            this.scale = 0.5;
+            this.depth = this.startY + 82;
+            Phaser.GameObjects.Image.call(this, this.scene, x, y, 'powerup');
+        }
+    });
+
+    var Malk = new Phaser.Class({
+        Extends: Phaser.GameObjects.Image,
+        initialize: function Malk (scene, x, y, radius) {
+            this.scene = scene;
+            this.startX = x;
+            this.startY = y;
+            this.radius = radius;
+            this.scale = 0.25;
+            this.depth = this.startY + 105;
+            Phaser.GameObjects.Image.call(this, this.scene, x, y, 'healing');
         }
     });
 
@@ -187,6 +256,9 @@
     function preload () {
         this.load.spritesheet('desert-tileset', 'assets/plain_desert_tileset.png', { frameWidth: 64, frameHeight: 32 });
         this.load.spritesheet('zombie1', 'assets/zombie_0.png', { frameWidth: 128, frameHeight: 128 });
+        this.load.image('powerup', 'assets/flagofthemotherland.png');
+        this.load.image('healing', 'assets/heneedsomemilk.png');
+        this.load.image('enemy', 'assets/leggy.png');
     }
 
     function create () {
@@ -195,15 +267,24 @@
         var frameWidthHalf = frameWidth / 2;
         var frameHeightHalf = frameHeight / 2;
 
-        sprite = this.add.existing(new Zombie(this, 736, 386, anims));
+        sprite = this.add.existing(new Zombie(this, 36, 386, anims));
         this.cameras.main.startFollow(sprite);
+
+        var pt1 = cartToIsoPoint(Math.floor(Math.random()*900), Math.floor(Math.random()*900));
+        powerup = this.add.existing(new FlagOfTheMotherland(this, pt1.x+800, pt1.y));
+
+        var pt2 = cartToIsoPoint(Math.floor(Math.random()*900), Math.floor(Math.random()*900));
+        malk = this.add.existing(new Malk(this, pt2.x, pt2.y));
+
+        var pt3 = cartToIsoPoint(Math.floor(Math.random()*900), Math.floor(Math.random()*900));
+        enemy = this.add.existing(new Enemy(this, pt3.x, pt3.y));
 
         for (var y = 900; y > 0; y-=frameHeightHalf) {
             for (var x = 900; x > 0; x-=frameWidthHalf) {
                 var tx = (x - y);
                 var ty = ((x + y) / 2);
 
-                var tile = this.add.image(tx+800, ty, 'desert-tileset', Math.floor(Math.random()*32));
+                var tile = this.add.image(tx, ty, 'desert-tileset', Math.floor(Math.random()*32));
                 tile.setOrigin(0.5, 1);
                 tile.depth = ty;
             }
@@ -222,17 +303,27 @@
                 sprite.die();
             } else if (event.code == 'KeyX') {
                 sprite.critical();
+            } else if (event.code == 'ShiftLeft') {
+                sprite.setSprint(true);
             }
         });
         this.input.keyboard.on('keyup', function(event) {
-            if (event.code !== 'Space' && event.code !== 'KeyX') {
+            if (event.code !== 'Space' && event.code !== 'KeyX' && event.code !== 'ShiftLeft') {
                 sprite.stop();
+            }
+            if (event.code == 'ShiftLeft') {
+                sprite.setSprint(false);
             }
         });
     }
 
     function update () {
+        enemy.update();
         sprite.update();
+    }
+
+    function cartToIsoPoint(x, y) {
+        return new Phaser.Geom.Point((x - y), (x + y) / 2);
     }
     </script>
 </body>
